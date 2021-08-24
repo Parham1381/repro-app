@@ -12,6 +12,8 @@ import { existsSync } from 'fs';
 // The Express app is exported so that it can be used by serverless Functions.
 export function app() {
   const server = express();
+  const request = require('request');
+  var authorization: string = ''; 
   const distFolder = join(process.cwd(), 'dist/browser');
   const indexHtml = existsSync(join(distFolder, 'index.original.html')) ? 'index.original.html' : 'index';
 
@@ -24,8 +26,24 @@ export function app() {
   server.set('views', distFolder);
 
   // TODO: implement data requests securely
-  server.get('/api/**', (req, res) => {
-    res.status(404).send('data requests are not yet supported');
+  server.get('/api/product/:productId', (req, res) => {
+    try {
+      console.log(`Authorization in get product endpoint: ${authorization}`);
+      const productId = req.params.productId;
+      const url = `someApiUrl/${productId}`;
+      const headers = {
+        'Authorization': `${authorization}`
+      }
+
+      request ({
+        url: url,
+        headers: headers
+      }).pipe(res);
+    } catch(err) {
+      console.log(err);
+      res.status(500).send('some error happened while fetching the product');
+    }
+    
   });
 
   // Serve static files from /browser
@@ -35,6 +53,8 @@ export function app() {
 
   // All regular routes use the Universal engine
   server.get('*', (req, res) => {
+    authorization = req.get('Authorization');
+    console.log(authorization);
     res.render(indexHtml, { req, providers: [{ provide: APP_BASE_HREF, useValue: req.baseUrl }] });
   });
 
